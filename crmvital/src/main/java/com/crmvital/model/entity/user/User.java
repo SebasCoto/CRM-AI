@@ -14,6 +14,7 @@ public class User {
     @Column(name="id_user")
     private int id;
 
+    @Column(name = "username")
     private String username;
 
     @Column(name="password_auth")
@@ -22,7 +23,10 @@ public class User {
     @ManyToOne
     @JoinColumn(name = "id_rol", referencedColumnName = "id")
     private Rol rol;
+
+    @Column(name = "status")
     private boolean status;
+
 
 
 }

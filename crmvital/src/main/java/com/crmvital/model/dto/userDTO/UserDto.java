@@ -13,6 +13,7 @@ public class UserDto {
     private int id_rol;
     private String rol_name;
     private String token;
+    private boolean status;
     public UserDto(String username, String password, int id_rol) {
         this.username = username;
         this.password = password;

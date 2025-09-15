@@ -23,9 +23,9 @@ public class RolService {
 
     public RolDTO insertRol(RolDTO rolDto) {
         Rol rol = new Rol();
-        rol.setRol_name(rolDto.getRolName());
+        rol.setRolName(rolDto.getRolName());
         Rol saved = rolRepository.save(rol);
-        return new RolDTO(saved.getRol_name());
+        return new RolDTO(saved.getRolName());
     }
 
 
