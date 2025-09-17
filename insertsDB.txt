@@ -1,0 +1,9 @@
+-- Insertando roles
+INSERT INTO rol (rol_name) VALUES ('ROLE_ADMIN');
+INSERT INTO rol (rol_name) VALUES ('ROLE_ASSISTANT');
+INSERT INTO rol (rol_name) VALUES ('ROLE_PROFESSIONAL');
+
+-- Insertando usuario admin
+INSERT INTO usuario (username, password_auth,id_rol,status,is_temporal_pass) 
+VALUES ('Admin', '$2a$12$EAe620kgUpv7LFbhZa5WZehorHFThMkG4U64f6mD1Uh1PZcOJOG3m',
+		 1,true,false);

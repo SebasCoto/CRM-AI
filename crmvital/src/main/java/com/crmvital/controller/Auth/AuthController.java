@@ -2,11 +2,13 @@ package com.crmvital.controller.Auth;
 
 import com.crmvital.model.RefreshToken;
 import com.crmvital.model.dto.ResponseDTO;
+import com.crmvital.model.dto.loginDTO.LoginRequest;
 import com.crmvital.model.dto.userDTO.UserDto;
 import com.crmvital.repository.user.RefreshTokenRepo;
 import com.crmvital.service.user.AuthService;
 import com.crmvital.service.user.RefreshTokenService;
 import com.crmvital.service.user.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,8 +29,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseDTO<UserDto> login(@RequestBody UserDto userDto) {
-        return authService.login(userDto);
+    public ResponseEntity<ResponseDTO<UserDto>> login(@RequestBody LoginRequest loginRequest) {
+        // loginRequest incluye username, password y optional forceLogin
+        ResponseDTO<UserDto> response = authService.login(
+                loginRequest.toUserDto(),
+                loginRequest.isForceLogin()
+        );
+        HttpStatus status = response.getSuccess() ? HttpStatus.OK : HttpStatus.UNAUTHORIZED;
+        return ResponseEntity.status(status).body(response);
     }
 
 

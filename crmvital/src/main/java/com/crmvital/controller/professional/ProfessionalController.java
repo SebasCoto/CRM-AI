@@ -4,12 +4,17 @@ import com.crmvital.model.dto.ResponseDTO;
 import com.crmvital.model.dto.professionalDTO.ProfessionalDTO;
 import com.crmvital.model.dto.userDTO.UserDto;
 
+import com.crmvital.projection.ProfessionalProjection;
 import com.crmvital.service.professional.ProfessionalService;
 import jakarta.mail.MessagingException;
 
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RestControllerAdvice
@@ -50,16 +55,18 @@ public class ProfessionalController {
         return response;
     }
 
-    @PutMapping("/toggleStatus")
-    public ResponseDTO<UserDto> toggleProfessional(@RequestParam int idProfessional) {
-        UserDto toggleStatus = professionalService.toggleProfessionalUserStatus(idProfessional);
+    @PatchMapping("/toggle-status/{id}")
+    public ResponseEntity<ResponseDTO<UserDto>> toggleProfessionalUserStatus(@PathVariable int id) {
+        ResponseDTO<UserDto> response = professionalService.toggleProfessionalUserStatus(id);
 
-        ResponseDTO<UserDto> response = new ResponseDTO<>();
-        response.setSuccess(true);
-        response.setMessage("Estado del usuario actualizado correctamente");
-        response.setObject(toggleStatus);
 
-        return response;
+        HttpStatus status = response.getObject() != null ? HttpStatus.OK : HttpStatus.NOT_FOUND;
+        return ResponseEntity.status(status).body(response);
+    }
+
+    @GetMapping
+    public ResponseDTO<List<ProfessionalProjection>> getProfessionals() {
+        return professionalService.getAllProfessionals();
     }
 
 

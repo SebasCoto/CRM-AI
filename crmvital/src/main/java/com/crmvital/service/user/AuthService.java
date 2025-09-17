@@ -10,11 +10,13 @@ import com.crmvital.model.entity.professional.Professional;
 import com.crmvital.model.entity.user.User;
 import com.crmvital.repository.assistant.AssistantRepo;
 import com.crmvital.repository.professional.ProfessionalRepo;
+import com.crmvital.repository.user.RefreshTokenRepo;
 import com.crmvital.repository.user.UserRepository;
 import com.crmvital.service.EmailService;
 import com.crmvital.util.JwtUtil;
 import com.crmvital.util.UsersUtil;
 import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,6 +31,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
 
@@ -45,6 +48,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UsersUtil passwordUtil;
     private final EmailService emailService;
+    private final RefreshTokenRepo refreshTokenRepo;
 
     public AuthService(AuthenticationManager authenticationManager, JwtUtil jwtUtil,
                        RefreshTokenService refreshTokenService,
@@ -52,7 +56,8 @@ public class AuthService {
                        ProfessionalRepo professionalRepo,
                        AssistantRepo assistantRepo,
                        PasswordEncoder passwordEncoder,
-                       UsersUtil passwordUtil, EmailService emailService) {
+                       UsersUtil passwordUtil, EmailService emailService,
+                       RefreshTokenRepo refreshTokenRepo) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.refreshTokenService = refreshTokenService;
@@ -62,21 +67,20 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.passwordUtil = passwordUtil;
         this.emailService = emailService;
+        this.refreshTokenRepo = refreshTokenRepo;
     }
 
-    public ResponseDTO<UserDto> login(UserDto userDto) {
+    @Transactional
+    public ResponseDTO<UserDto> login(UserDto userDto, boolean forceLogin) {
         ResponseDTO<UserDto> response = new ResponseDTO<>();
 
         try {
+            // Autenticación
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            userDto.getUsername(),
-                            userDto.getPassword()
-                    )
+                    new UsernamePasswordAuthenticationToken(userDto.getUsername(), userDto.getPassword())
             );
 
-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            User user = userRepository.findByUsername(userDetails.getUsername());
+            User user = userRepository.findByUsername(userDto.getUsername());
 
             if (!user.isStatus()) {
                 response.setSuccess(false);
@@ -84,53 +88,49 @@ public class AuthService {
                 return response;
             }
 
+            // Verificar sesión activa
+            boolean hasActiveToken = refreshTokenRepo.existsByUserIdAndExpiryDateAfter(user.getId(), new Date());
 
-            LocalDateTime expiration = user.getDateExpirationTempPass();
-            LocalDateTime now = LocalDateTime.now();
-
-            if (expiration != null && now.isAfter(expiration)) {
+            if (hasActiveToken && !forceLogin) {
                 response.setSuccess(false);
-                response.setMessage("La contraseña temporal ya expiró");
+                response.setMessage("Ya existe una sesión activa. ¿Desea continuar?");
+                response.setObject(null);
                 return response;
             }
 
+            if (hasActiveToken && forceLogin) {
+                refreshTokenRepo.deleteByUserId(user.getId());
+            }
 
+            String accessToken = jwtUtil.generateToken(userDto);
 
-
-            UserDto userDtoForToken = new UserDto();
-            userDtoForToken.setId(user.getId());
-            userDtoForToken.setUsername(user.getUsername());
-            userDtoForToken.setRol_name(user.getRol().getRolName());
-
-            String token = jwtUtil.generateToken(userDtoForToken);
             RefreshToken refreshToken = refreshTokenService.getRefreshToken(user.getId());
 
-            userDtoForToken.setPassword(null);
-            userDtoForToken.setToken(token);
-
-            userDtoForToken.setPassword(null);
-            userDtoForToken.setEmail(null);
-            userDtoForToken.setOldPassword(null);
-            userDtoForToken.setNewPassword(null);
-            userDtoForToken.setConfirmPassword(null);
+            UserDto dto = new UserDto();
+            dto.setId(user.getId());
+            dto.setUsername(user.getUsername());
+            dto.setRol_name(user.getRol().getRolName());
+            dto.setToken(accessToken);
+            dto.setRefreshToken(refreshToken.getToken());
+            dto.setPassword(null);
+            dto.setEmail(null);
 
             response.setSuccess(true);
-            response.setMessage("Login exitoso");
-            response.setObject(userDtoForToken);
+            response.setObject(dto);
+            response.setMessage(hasActiveToken ? "Login exitoso. Sesión previa cerrada." : "Login exitoso");
             return response;
 
         } catch (BadCredentialsException e) {
             response.setSuccess(false);
             response.setMessage("Usuario o contraseña incorrecta");
             return response;
-        }catch (Exception e) {
-            log.error("Error al autenticar", e);
+        } catch (Exception e) {
             response.setSuccess(false);
-            response.setMessage("Error al procesar la solicitud, favor comunicarse con el proveedor");
+            response.setMessage("Error al procesar la solicitud");
             return response;
         }
-
     }
+
 
 
 

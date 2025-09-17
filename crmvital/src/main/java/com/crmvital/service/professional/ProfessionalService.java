@@ -1,10 +1,12 @@
 package com.crmvital.service.professional;
 
+import com.crmvital.model.dto.ResponseDTO;
 import com.crmvital.model.dto.professionalDTO.ProfessionalDTO;
 import com.crmvital.model.dto.userDTO.UserDto;
 import com.crmvital.model.entity.professional.Professional;
 import com.crmvital.model.entity.rol.Rol;
 import com.crmvital.model.entity.user.User;
+import com.crmvital.projection.ProfessionalProjection;
 import com.crmvital.repository.professional.ProfessionalRepo;
 import com.crmvital.repository.rol.RolRepository;
 import com.crmvital.service.user.UserService;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -50,7 +53,6 @@ public class ProfessionalService {
         professionalRepo.save(professional);
 
         ProfessionalDTO resultDTO = new ProfessionalDTO();
-        resultDTO.setId(professional.getId());
         resultDTO.setNameProfessional(professional.getNameProfessional());
         resultDTO.setFirstLastName(professional.getFirstLastName());
         resultDTO.setSecondLastName(professional.getSecondLastName());
@@ -156,6 +158,10 @@ public class ProfessionalService {
             professional.setPhoneNumber(professionalDTO.getPhoneNumber());
             changed = true;
         }
+        if(!Objects.equals(professional.getIdCard(), professionalDTO.getIdCard())) {
+            professional.setIdCard(professionalDTO.getIdCard());
+            changed = true;
+        }
 
         if (changed) {
             professionalRepo.save(professional);
@@ -176,11 +182,46 @@ public class ProfessionalService {
 
 
     @Transactional
-    public UserDto toggleProfessionalUserStatus(int idProfessional) {
-        Professional professional = professionalRepo.findById(idProfessional)
-                .orElseThrow(() -> new RuntimeException("Profesional no encontrado"));
+    public ResponseDTO<UserDto> toggleProfessionalUserStatus(int idProfessional) {
+        ResponseDTO<UserDto> responseDTO = new ResponseDTO<>();
 
-        return userService.toggleUserStatus(professional.getUser().getId());
+        try {
+            Professional professional = professionalRepo.findById(idProfessional)
+                    .orElseThrow(() -> new RuntimeException("Profesional no encontrado"));
+
+            UserDto updatedUser = userService.toggleUserStatus(professional.getUser().getId());
+
+            responseDTO.setSuccess(true);
+            responseDTO.setObject(updatedUser);
+            responseDTO.setMessage("Estado del usuario actualizado correctamente");
+            return responseDTO;
+
+        } catch (RuntimeException e) {
+            responseDTO.setSuccess(false);
+            responseDTO.setObject(null);
+            responseDTO.setMessage(e.getMessage());
+            return responseDTO;
+        }
+    }
+
+
+
+    public ResponseDTO<List<ProfessionalProjection>> getAllProfessionals() {
+        try {
+            List<ProfessionalProjection> list = professionalRepo.findAllProjectedBy();
+
+            ResponseDTO<List<ProfessionalProjection>> response = new ResponseDTO<>();
+            response.setMessage(list.size() + " professionals encontrados");
+            response.setSuccess(true);
+            response.setObject(list);
+            return response;
+        } catch (Exception e) {
+            ResponseDTO<List<ProfessionalProjection>> response = new ResponseDTO<>();
+            response.setMessage("Error al obtener profesionales: " + e.getMessage());
+            response.setSuccess(false);
+            response.setObject(null);
+            return response;
+        }
     }
 
 

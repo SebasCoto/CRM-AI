@@ -13,6 +13,8 @@ public class UserDto {
     private int id_rol;
     private String rol_name;
     private String token;
+    private String refreshToken;
+
     private boolean status;
     private String oldPassword;
     private String confirmPassword;
