@@ -1,6 +1,7 @@
 package com.crmvital.controller.Auth;
 
 import com.crmvital.model.RefreshToken;
+import com.crmvital.model.dto.ResponseDTO;
 import com.crmvital.model.dto.userDTO.UserDto;
 import com.crmvital.repository.user.RefreshTokenRepo;
 import com.crmvital.service.user.AuthService;
@@ -26,18 +27,15 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UserDto userDto) {
-        UserDto loggedUser = authService.login(userDto);
-
-        RefreshToken refreshToken = refreshTokenService.getRefreshToken(userDto.getId());
-
-        refreshTokenRepo.save(refreshToken);
-        return ResponseEntity.ok(Map.of(
-                "accessToken", loggedUser.getToken(),
-                "refreshToken", refreshToken.getToken()
-        ));
+    public ResponseDTO<UserDto> login(@RequestBody UserDto userDto) {
+        return authService.login(userDto);
     }
 
+
+    @PostMapping("/resetPassword")
+    public ResponseDTO<UserDto> resetPassword(@RequestParam String email) {
+        return authService.resetPassword(email);
+    }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestParam String refreshToken) {

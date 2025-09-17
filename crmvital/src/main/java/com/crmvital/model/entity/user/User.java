@@ -4,6 +4,8 @@ import com.crmvital.model.entity.rol.Rol;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Data
 @Table(name = "auth_users")
@@ -21,11 +23,18 @@ public class User {
     private String password;
 
     @ManyToOne
-    @JoinColumn(name = "id_rol", referencedColumnName = "id")
+    @JoinColumn(name = "id_rol", referencedColumnName = "id_rol")
     private Rol rol;
 
     @Column(name = "status")
     private boolean status;
+
+    @Column(name = "is_temporal_pass")
+    private Boolean isTempPass;
+
+    @Column(name = "date_expiration_temp_pass")
+    private LocalDateTime dateExpirationTempPass;
+
 
 
 

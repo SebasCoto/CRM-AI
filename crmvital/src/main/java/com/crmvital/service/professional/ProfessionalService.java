@@ -40,7 +40,7 @@ public class ProfessionalService {
         professionalRepo.save(professional);
 
 
-        Rol rolProfesional = rolRepository.findByRolName("Professional")
+        Rol rolProfesional = rolRepository.findByRolName("ROLE_PROFESSIONAL")
                 .orElseThrow(() -> new RuntimeException("Rol Profesional no encontrado"));
 
 

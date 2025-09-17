@@ -1,9 +1,6 @@
 package com.crmvital.model.entity.rol;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
@@ -11,7 +8,10 @@ import lombok.Data;
 public class Rol {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
+    @Column(name = "id_rol")
     private int id;
+
+    @Column(name = "rol_name")
     private String rolName;
 
 }

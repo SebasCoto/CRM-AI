@@ -2,6 +2,8 @@ package com.crmvital.controller.user;
 
 
 import com.crmvital.model.RefreshToken;
+import com.crmvital.model.dto.ChangePassword;
+import com.crmvital.model.dto.ResponseDTO;
 import com.crmvital.model.dto.userDTO.UserDto;
 import com.crmvital.model.entity.user.User;
 import com.crmvital.repository.user.UserRepository;
@@ -9,6 +11,7 @@ import com.crmvital.service.user.AuthService;
 import com.crmvital.service.user.RefreshTokenService;
 import com.crmvital.service.user.UserService;
 import com.crmvital.util.JwtUtil;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import io.jsonwebtoken.Jwts;
@@ -23,10 +26,13 @@ public class UserController {
     private final UserService userService;
     private final JwtUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
-    private final UserRepository userRepository;
+    private final UserRepository userRepository;;
 
 
-    public UserController(UserService userService, JwtUtil jwtUtil, RefreshTokenService refreshTokenService, UserRepository userRepository) {
+    public UserController(UserService userService,
+                          JwtUtil jwtUtil,
+                          RefreshTokenService refreshTokenService,
+                          UserRepository userRepository) {
         this.userService = userService;
         this.jwtUtil = jwtUtil;
         this.refreshTokenService = refreshTokenService;
@@ -50,6 +56,17 @@ public class UserController {
 
         return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }
+
+    @PostMapping("/changePassword")
+    public ResponseDTO<UserDto> changePassword(
+            @RequestBody @Valid ChangePassword changePassword,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.replace("Bearer ", "");
+
+        return userService.changePassword(changePassword,token);
+    }
+
 
 
 

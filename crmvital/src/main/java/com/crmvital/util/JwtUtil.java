@@ -49,6 +49,15 @@ public class JwtUtil {
         return claims.get("username", String.class);
     }
 
+    public int getIdFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return Integer.parseInt(claims.getSubject());
+    }
+
     public static class JwtValidationException extends RuntimeException {
         public JwtValidationException(String message) {
             super(message);
