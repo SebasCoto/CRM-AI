@@ -31,15 +31,9 @@ public class ProfessionalController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/createProfessional")
     public ResponseDTO<ProfessionalDTO> createProfessional(@RequestBody ProfessionalDTO professionalDTO) throws MessagingException {
-        ProfessionalDTO created = professionalService.insertProfessional(professionalDTO);
-
-        ResponseDTO<ProfessionalDTO> response = new ResponseDTO<>();
-        response.setSuccess(true);
-        response.setMessage("Profesional creado correctamente");
-        response.setObject(created);
-
-        return response;
+        return professionalService.insertProfessional(professionalDTO);
     }
+
 
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -55,6 +49,8 @@ public class ProfessionalController {
         return response;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+
     @PatchMapping("/toggle-status/{id}")
     public ResponseEntity<ResponseDTO<UserDto>> toggleProfessionalUserStatus(@PathVariable int id) {
         ResponseDTO<UserDto> response = professionalService.toggleProfessionalUserStatus(id);
@@ -64,6 +60,7 @@ public class ProfessionalController {
         return ResponseEntity.status(status).body(response);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','ASSISTANT')")
     @GetMapping
     public ResponseDTO<List<ProfessionalProjection>> getProfessionals() {
         return professionalService.getAllProfessionals();

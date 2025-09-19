@@ -1,6 +1,9 @@
 package com.crmvital.service.professional;
 
+import com.crmvital.model.dto.IdCardDTO;
+import com.crmvital.model.dto.IdCardResponseDTO;
 import com.crmvital.model.dto.ResponseDTO;
+import com.crmvital.model.dto.patientDTO.PatientCreateDTO;
 import com.crmvital.model.dto.professionalDTO.ProfessionalDTO;
 import com.crmvital.model.dto.userDTO.UserDto;
 import com.crmvital.model.entity.professional.Professional;
@@ -9,9 +12,11 @@ import com.crmvital.model.entity.user.User;
 import com.crmvital.projection.ProfessionalProjection;
 import com.crmvital.repository.professional.ProfessionalRepo;
 import com.crmvital.repository.rol.RolRepository;
+import com.crmvital.service.IdService;
 import com.crmvital.service.user.UserService;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,62 +24,111 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.Objects;
 
+import static com.crmvital.util.UsersUtil.capitalizeWords;
+
 @Service
 public class ProfessionalService {
 
     private final ProfessionalRepo professionalRepo;
     private final UserService userService;
     private final RolRepository rolRepository;
+    private final IdService idService;
 
-    public ProfessionalService(ProfessionalRepo professionalRepo, UserService userService, RolRepository rolRepository) {
+    public ProfessionalService(ProfessionalRepo professionalRepo,
+                               UserService userService,
+                               RolRepository rolRepository,
+                               IdService idService) {
         this.professionalRepo = professionalRepo;
         this.userService = userService;
         this.rolRepository = rolRepository;
+        this.idService = idService;
     }
 
 
     @Transactional
-    public ProfessionalDTO insertProfessional(ProfessionalDTO professionalDTO) throws MessagingException {
+    public ResponseDTO<ProfessionalDTO> insertProfessional(ProfessionalDTO professionalDTO) throws MessagingException {
 
-        validateProfessional(professionalDTO);
-
-
-        Professional professional = getProfessional(professionalDTO);
-        professionalRepo.save(professional);
+        try{
 
 
-        Rol rolProfesional = rolRepository.findByRolName("ROLE_PROFESSIONAL")
-                .orElseThrow(() -> new RuntimeException("Rol Profesional no encontrado"));
+            Professional professional = getProfessional(professionalDTO);
+            professionalDTO.setNameProfessional(professional.getNameProfessional());
+            professionalDTO.setFirstLastName(professional.getFirstLastName());
+            professionalDTO.setSecondLastName(professional.getSecondLastName());
+            validateProfessional(professionalDTO);
+
+            professionalRepo.save(professional);
 
 
-        User createdUser = userService.createUser(professional.getId(), rolProfesional);
+            Rol rolProfesional = rolRepository.findByRolName("ROLE_PROFESSIONAL")
+                    .orElseThrow(() -> new RuntimeException("Rol Profesional no encontrado"));
 
-        professional.setUser(createdUser);
-        professionalRepo.save(professional);
 
-        ProfessionalDTO resultDTO = new ProfessionalDTO();
-        resultDTO.setNameProfessional(professional.getNameProfessional());
-        resultDTO.setFirstLastName(professional.getFirstLastName());
-        resultDTO.setSecondLastName(professional.getSecondLastName());
-        resultDTO.setSpecialty(professional.getSpecialty());
-        resultDTO.setEmail(professional.getEmail());
-        resultDTO.setPhoneNumber(professional.getPhoneNumber());
-        resultDTO.setIdUser(createdUser.getId());
+            User createdUser = userService.createUser(professional.getId(), rolProfesional);
 
-        return resultDTO;
+            professional.setUser(createdUser);
+            professionalRepo.save(professional);
+
+           ResponseDTO<ProfessionalDTO> responseDTO = new ResponseDTO<>();
+           responseDTO.setSuccess(true);
+           responseDTO.setMessage("Se ha registrado el paciente correctamente");
+           responseDTO.setObject(professionalDTO);
+
+           return responseDTO;
+        }catch (IllegalArgumentException ex) {
+            ResponseDTO<ProfessionalDTO> responseDTO = new ResponseDTO<>();
+            responseDTO.setSuccess(false);
+            responseDTO.setMessage(ex.getMessage());
+            responseDTO.setObject(null);
+            return responseDTO;
+
+        } catch (DataAccessException ex) {
+            ResponseDTO<ProfessionalDTO> responseDTO = new ResponseDTO<>();
+            responseDTO.setSuccess(false);
+            responseDTO.setMessage("Error al registrar el paciente: " + ex.getMessage());
+            responseDTO.setObject(null);
+            return responseDTO;
+        }
+
 
     }
 
     private Professional getProfessional(ProfessionalDTO professionalDTO) {
         Professional  professional = new Professional();
-        professional.setNameProfessional(professionalDTO.getNameProfessional());
-        professional.setFirstLastName(professionalDTO.getFirstLastName());
-        professional.setSecondLastName(professionalDTO.getSecondLastName());
+        boolean obtainedName = false;
+
+        IdCardResponseDTO response = idService.consultId(professionalDTO.getIdCard());
+
+        if(response != null && response.getResults() != null && !response.getResults().isEmpty()) {
+            IdCardDTO result = response.getResults().get(0);
+
+            professional.setNameProfessional(capitalizeWords(result.getFirstname1()));
+            professional.setFirstLastName(capitalizeWords(result.getLastname1()));
+            professional.setSecondLastName(capitalizeWords(result.getLastname2()));
+            obtainedName = true;
+        } else if(professionalDTO.getNameProfessional() != null
+                    && professionalDTO.getFirstLastName() != null) {
+            professional.setNameProfessional(professionalDTO.getNameProfessional());
+            professional.setFirstLastName(professionalDTO.getFirstLastName());
+            professional.setSecondLastName(professionalDTO.getSecondLastName());
+            obtainedName = true;
+        }
+
+        if(!obtainedName) {
+            throw new IllegalArgumentException(
+                    "No se pudo obtener el nombre automáticamente. Por favor ingrese el nombre manualmente."
+            );        }
+
         professional.setSpecialty(professionalDTO.getSpecialty());
         professional.setEmail(professionalDTO.getEmail());
         professional.setPhoneNumber(professionalDTO.getPhoneNumber());
         professional.setIdCard(professionalDTO.getIdCard());
         return professional;
+
+
+
+
+
     }
 
     private void validateProfessional(ProfessionalDTO dto) {

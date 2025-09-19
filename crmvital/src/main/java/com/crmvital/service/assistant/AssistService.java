@@ -1,5 +1,7 @@
 package com.crmvital.service.assistant;
 
+import com.crmvital.model.dto.IdCardDTO;
+import com.crmvital.model.dto.IdCardResponseDTO;
 import com.crmvital.model.dto.ResponseDTO;
 import com.crmvital.model.dto.assisDTO.AssisDTO;
 import com.crmvital.model.dto.professionalDTO.ProfessionalDTO;
@@ -12,6 +14,7 @@ import com.crmvital.projection.ProfessionalProjection;
 import com.crmvital.repository.assistant.AssistantRepo;
 import com.crmvital.repository.rol.RolRepository;
 import com.crmvital.repository.user.UserRepository;
+import com.crmvital.service.IdService;
 import com.crmvital.service.user.UserService;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
@@ -20,6 +23,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
 
+import static com.crmvital.util.UsersUtil.capitalizeWords;
+
 @Service
 public class AssistService {
 
@@ -27,14 +32,18 @@ public class AssistService {
     private AssistantRepo assistantRepo;
     private UserRepository  userRepository;
     private RolRepository rolRepository;
+    private IdService idService;
 
     public AssistService (AssistantRepo assistantRepo,
                           UserRepository userRepository,
-                          RolRepository rolRepository, UserService userService) {
+                          RolRepository rolRepository,
+                          UserService userService,
+                          IdService idService) {
         this.assistantRepo = assistantRepo;
         this.userRepository = userRepository;
         this.rolRepository = rolRepository;
         this.userService = userService;
+        this.idService = idService;
     }
 
 
@@ -44,9 +53,12 @@ public class AssistService {
         ResponseDTO<AssisDTO> response = new ResponseDTO<>();
 
         try {
-            validateAssistant(assisDTO);
 
             Assistant assistant = getAssistant(assisDTO);
+            assisDTO.setNameAssistant(assistant.getNameAssistant());
+            assisDTO.setFirstLastName(assistant.getFirstLastName());
+            assisDTO.setSecondLastName(assistant.getSecondLastName());
+            validateAssistant(assisDTO);
             assistantRepo.save(assistant);
 
             Rol rolAssistant = rolRepository.findByRolName("ROLE_ASSISTANT")
@@ -126,9 +138,32 @@ public class AssistService {
 
     private Assistant getAssistant(AssisDTO assisDTO) {
         Assistant  assistant = new Assistant();
-        assistant.setNameAssistant(assisDTO.getNameAssistant());
-        assistant.setFirstLastName(assisDTO.getFirstLastName());
-        assistant.setSecondLastName(assisDTO.getSecondLastName());
+        boolean obtainedName = false;
+
+        IdCardResponseDTO response = idService.consultId(assisDTO.getIdCard());
+
+        if(response != null && response.getResults() != null && !response.getResults().isEmpty()){
+            IdCardDTO result = response.getResults().get(0);
+
+            assistant.setNameAssistant(capitalizeWords(result.getFirstname1()));
+            assistant.setFirstLastName(capitalizeWords(result.getLastname1()));
+            assistant.setSecondLastName(capitalizeWords(result.getLastname2()));
+
+            obtainedName =  true;
+        }else if(assisDTO.getNameAssistant() != null
+        && assisDTO.getFirstLastName() != null){
+            assistant.setNameAssistant(assisDTO.getNameAssistant());
+            assistant.setFirstLastName(assisDTO.getFirstLastName());
+            assistant.setSecondLastName(assisDTO.getSecondLastName());
+            obtainedName =  true;
+        }
+
+        if(!obtainedName){
+            throw new IllegalArgumentException(
+                    "No se pudo obtener el nombre automaticament. Por favor ingrese el nombre manualmente."
+            );
+        }
+
         assistant.setEmail(assisDTO.getEmail());
         assistant.setPhoneNumber(assisDTO.getPhoneNumber());
         assistant.setIdCard(assisDTO.getIdCard());
